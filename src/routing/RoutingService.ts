@@ -3,6 +3,7 @@ import { Graph } from "../model/Graph";
 import { Edge } from "../model/Edge";
 import { PathNode } from "../model/PathNode";
 import { RouteNotFound } from "../errors/RouteNotFound";
+import { PathTree } from "../model/PathTree";
 
 /**
  * Find routes using Dijkstra's algorithm.
@@ -11,24 +12,21 @@ import { RouteNotFound } from "../errors/RouteNotFound";
  */
 export class RoutingService {
 
-    private nodes: Map<Vertex,PathNode>;
+    private pathTree: PathTree;
 
     constructor(
-        private graph: Graph
+        private graph: Graph,
     ) {
-        this.nodes = new Map<Vertex, PathNode>();
+        this.pathTree = null;
     }
 
-    getNode(vertex: Vertex): PathNode{
-        return this.nodes.get(vertex)
-    }
 
     /**
      * Find a route between an origin and a destination
      */
     findRoute(origin: Vertex, destination: Vertex): Edge[] {
         // prepare graph for the visit
-        this.initGraph(origin);
+        this.pathTree = new PathTree(this.graph, origin)
 
         // visit all vertices
         let current: Vertex | null;
@@ -36,26 +34,14 @@ export class RoutingService {
             this.visit(current);
 
             // until the destination is reached...
-            if (this.getNode(destination).cost != Number.POSITIVE_INFINITY) {
-                return this.buildRoute(destination);
+            if (this.pathTree.getNode(destination).cost != Number.POSITIVE_INFINITY) {
+                return this.pathTree.getPath(destination);
             }
         }
 
         throw new RouteNotFound(`no route found from '${origin.id}' to '${destination.id}'`);
     }
 
-    /**
-     * Prepare the graph to find a route from an origin.
-     */
-    initGraph(origin: Vertex) {
-        for (let vertex of this.graph.vertices) {
-            const pathNode = new PathNode();
-            pathNode.cost = origin == vertex ? 0.0 : Number.POSITIVE_INFINITY;
-            pathNode.reachingEdge = null;
-            pathNode.visited = false;
-            this.nodes.set(vertex, pathNode);
-        }
-    }
 
     /**
      * Explores out edges for a given vertex and try to reach vertex with a better cost.
@@ -68,15 +54,15 @@ export class RoutingService {
              * (Note that the cost is POSITIVE_INFINITY for unreached vertex)
              */
             
-            const newCost = this.getNode(vertex).cost + outEdge.getLength();
-            const reachedPathNode = this.getNode(reachedVertex)
+            const newCost = this.pathTree.getNode(vertex).cost + outEdge.getLength();
+            const reachedPathNode = this.pathTree.getNode(reachedVertex)
             if (newCost < reachedPathNode.cost) {
                 reachedPathNode.cost = newCost;
                 reachedPathNode.reachingEdge = outEdge;
             }
         }
         // mark vertex as visited
-        this.getNode(vertex).visited = true;
+        this.pathTree.getNode(vertex).visited = true;
     }
 
     /**
@@ -86,7 +72,7 @@ export class RoutingService {
     findNextVertex(): Vertex | null {
         let candidate: Vertex | null = null;
         for (const vertex of this.graph.vertices) {
-            const vertexPathNode = this.getNode(vertex)
+            const vertexPathNode = this.pathTree.getNode(vertex)
             // already visited?
             if (vertexPathNode.visited) {
                 continue;
@@ -96,28 +82,12 @@ export class RoutingService {
                 continue;
             }
             // nearest from origin?
-            if (candidate == null || vertexPathNode.cost < this.getNode(candidate).cost) {
+            if (candidate == null || vertexPathNode.cost < this.pathTree.getNode(candidate).cost) {
                 candidate = vertex;
             }
         }
         return candidate;
     }
 
-    /**
-     * Build route to the reached destination.
-     */
-    private buildRoute(destination: Vertex): Edge[] {
-        const edges: Edge[] = [];
-
-        for (
-            let current = this.getNode(destination).reachingEdge;
-            current != null;
-            current = this.getNode(current.getSource()).reachingEdge
-        ) {
-            edges.push(current);
-        }
-
-        return edges.reverse();
-    }
 
 }
