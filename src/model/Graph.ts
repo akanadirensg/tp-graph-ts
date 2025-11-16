@@ -15,6 +15,21 @@ export class Graph {
         this.edges = [];
     }
 
+    createVertex(coordinate :Coordinate, id:string): Vertex {
+        const a = new Vertex();
+        a.id = id;
+        a.coordinate = coordinate;
+        this.vertices.push(a);
+        return a;
+    }
+
+    createEdge(source: Vertex, target: Vertex, id: string): Edge {
+        const ab = new Edge(source, target);
+        ab.id = id;
+        this.edges.push(ab);
+        return ab;
+    }
+
     /**
      * Get out edges for a given vertex
      */
@@ -72,11 +87,7 @@ export class Graph {
         try {
             return this.findVertexByCoordinate(c);
         }catch(error){
-            const vertex = new Vertex();
-            vertex.id = (this.vertices.length+1).toString();
-            vertex.coordinate = c;
-            this.vertices.push(vertex);
-            return vertex;
+            return this.createVertex(c, (this.vertices.length+1).toString())
         }
     }
 
