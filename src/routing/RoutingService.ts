@@ -1,6 +1,7 @@
 import { Vertex } from "../model/Vertex";
 import { Graph } from "../model/Graph";
 import { Edge } from "../model/Edge";
+import { PathNode } from "../model/PathNode";
 import { RouteNotFound } from "../errors/RouteNotFound";
 
 /**
@@ -10,10 +11,16 @@ import { RouteNotFound } from "../errors/RouteNotFound";
  */
 export class RoutingService {
 
+    private nodes: Map<Vertex,PathNode>;
+
     constructor(
         private graph: Graph
     ) {
+        this.nodes = new Map<Vertex, PathNode>();
+    }
 
+    getNode(vertex: Vertex): PathNode{
+        return this.nodes.get(vertex)
     }
 
     /**
@@ -29,7 +36,7 @@ export class RoutingService {
             this.visit(current);
 
             // until the destination is reached...
-            if (destination.cost != Number.POSITIVE_INFINITY) {
+            if (this.getNode(destination).cost != Number.POSITIVE_INFINITY) {
                 return this.buildRoute(destination);
             }
         }
@@ -42,9 +49,11 @@ export class RoutingService {
      */
     initGraph(origin: Vertex) {
         for (let vertex of this.graph.vertices) {
-            vertex.cost = origin == vertex ? 0.0 : Number.POSITIVE_INFINITY;
-            vertex.reachingEdge = null;
-            vertex.visited = false;
+            const pathNode = new PathNode();
+            pathNode.cost = origin == vertex ? 0.0 : Number.POSITIVE_INFINITY;
+            pathNode.reachingEdge = null;
+            pathNode.visited = false;
+            this.nodes.set(vertex, pathNode);
         }
     }
 
@@ -58,14 +67,16 @@ export class RoutingService {
              * Test if reachedVertex is reached with a better cost.
              * (Note that the cost is POSITIVE_INFINITY for unreached vertex)
              */
-            const newCost = vertex.cost + outEdge.getLength();
-            if (newCost < reachedVertex.cost) {
-                reachedVertex.cost = newCost;
-                reachedVertex.reachingEdge = outEdge;
+            
+            const newCost = this.getNode(vertex).cost + outEdge.getLength();
+            const reachedPathNode = this.getNode(reachedVertex)
+            if (newCost < reachedPathNode.cost) {
+                reachedPathNode.cost = newCost;
+                reachedPathNode.reachingEdge = outEdge;
             }
         }
         // mark vertex as visited
-        vertex.visited = true;
+        this.getNode(vertex).visited = true;
     }
 
     /**
@@ -75,16 +86,17 @@ export class RoutingService {
     findNextVertex(): Vertex | null {
         let candidate: Vertex | null = null;
         for (const vertex of this.graph.vertices) {
+            const vertexPathNode = this.getNode(vertex)
             // already visited?
-            if (vertex.visited) {
+            if (vertexPathNode.visited) {
                 continue;
             }
             // not reached?
-            if (vertex.cost == Number.POSITIVE_INFINITY) {
+            if (vertexPathNode.cost == Number.POSITIVE_INFINITY) {
                 continue;
             }
             // nearest from origin?
-            if (candidate == null || vertex.cost < candidate.cost) {
+            if (candidate == null || vertexPathNode.cost < this.getNode(candidate).cost) {
                 candidate = vertex;
             }
         }
@@ -98,9 +110,9 @@ export class RoutingService {
         const edges: Edge[] = [];
 
         for (
-            let current = destination.reachingEdge;
+            let current = this.getNode(destination).reachingEdge;
             current != null;
-            current = current.getSource().reachingEdge
+            current = this.getNode(current.getSource()).reachingEdge
         ) {
             edges.push(current);
         }
