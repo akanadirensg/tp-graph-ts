@@ -15,6 +15,10 @@ export class Edge {
     constructor(source: Vertex, target: Vertex){
         this._source=source
         this._target=target
+
+        source._outEdges.push(this)
+        target._inEdges.push(this)
+
     }
 
     setGeometry(geometry: LineString): void{
