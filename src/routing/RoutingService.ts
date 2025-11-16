@@ -26,7 +26,7 @@ export class RoutingService {
      */
     findRoute(origin: Vertex, destination: Vertex): Edge[] {
         // prepare graph for the visit
-        this.pathTree = new PathTree(this.graph, origin)
+        this.pathTree = new PathTree(origin)
 
         // visit all vertices
         let current: Vertex | null;
@@ -34,7 +34,7 @@ export class RoutingService {
             this.visit(current);
 
             // until the destination is reached...
-            if (this.pathTree.getNode(destination).cost != Number.POSITIVE_INFINITY) {
+            if (this.pathTree.isReached(destination)) {
                 return this.pathTree.getPath(destination);
             }
         }
@@ -71,23 +71,16 @@ export class RoutingService {
      */
     findNextVertex(): Vertex | null {
         let candidate: Vertex | null = null;
-        for (const vertex of this.graph.vertices) {
-            const vertexPathNode = this.pathTree.getNode(vertex)
-            // already visited?
-            if (vertexPathNode.visited) {
-                continue;
-            }
-            // not reached?
-            if (vertexPathNode.cost == Number.POSITIVE_INFINITY) {
-                continue;
-            }
-            // nearest from origin?
-            if (candidate == null || vertexPathNode.cost < this.pathTree.getNode(candidate).cost) {
+        for (const vertex of this.pathTree.getReachedVertices()) {
+            const node = this.pathTree.getNode(vertex);
+            if (node.visited) continue;
+            if (candidate == null || node.cost < this.pathTree.getNode(candidate).cost) {
                 candidate = vertex;
             }
         }
         return candidate;
     }
+
 
 
 }
